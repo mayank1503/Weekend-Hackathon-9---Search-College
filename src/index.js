@@ -1,41 +1,31 @@
-const express = require("express");
-const app = express();
+const express = require('express')
+const app = express()
 const bodyParser = require("body-parser");
-const port = 8080;
+const port = 8080
 
 // Parse JSON bodies (as sent by API clients)
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
-//const {connection}  = require("mongoose");
-const { connection } = require("./connector");
-app.get("/findColleges", (req, res) => {
-  const { name, state, city, minPackage, maxFees, course, exams } = req.query;
+const { connections } = require('mongoose');
 
-  if(minPackage<0||maxFees<0){
-    res.status(400).send({msg:"invalid request"});
-    return;
-  }
+const collegeSchema = require('./schema');
+const { ReplSet } = require('mongodb');
 
-  console.log(name, state, city, minPackage, maxFees, course, exams);
-  const match = {
-    name: name ? { $regex: name, $options: "i" } : { $regex: /.*/ },
-    state: state ? { $regex: state, $options: "i" } : { $regex: /.*/ },
-    city: city ? { $regex: city, $options: "i" } : { $regex: /.*/ },
-    minPackage: { $gte: Number(minPackage) },
-    maxFees: { $lte: Number(maxFees) },
-    course: course ? { $regex: course, $options: "i" } : { $regex: /.*/ },
-    exam: exams ? { $regex: exams, $options: "i" } : { $regex: /.*/ },
-  };
-  connection
-    .find(match)
-    .then((data) => res.send(data))
-    .catch((err) => res.status(400).send({ msg: err }));
-  
+app.get('/findColleges', (req,res)=>{
+
+    // name, state, city, minPackage, maxFees, course and exams
+    let {name, state, city, minPackage, maxFees, course, exams} = req.body;
+    collegeSchema.find({name : {$regex : `/${name}.line/`, $options: 'si'}, 
+        state: {$regex : `/${state}/` , $options: 'i'},
+        city: {$regex: `/${city}/`, $options: 'i'},
+        minPackage : {$gte : Number(minPackage)},
+        maxFees : {$lte: Number(maxFees)},
+        course: {$regex: `/${course}/`, $options: 'i'},
+        exams: {$regex: `/${exams}.line/`, $options: 'si'} 
+        })
+        .then(result=> res.send(result))
+        .catch(error=> res.status(400).send('college not found'));
+
 });
 
-const listEndpoints = require("express-list-endpoints"); // npm i express-list-endpoints
-console.log(listEndpoints(app)); // where app = express();
-
-app.listen(port, () => console.log(`App listening on port ${port}!`));
-
-module.exports = app;
+app.listen(port, () => console.log(`App listening on port ${port}!`))
